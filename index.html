@@ -20,6 +20,7 @@
     --ink:#1d1a16; --paper:#f7efdc;
     --lacquer:#b3261e; --lacquer-dark:#7d1712; --gold:#d9a93b; --gold-light:#f3d27a;
     --ok:#7fe0a8; --bad:#ff8a7a;
+    --team0:#3a7bd5; --team1:#d0452f;
     --font-ui:"Gowun Dodum","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
     --font-title:"Song Myung","Gowun Batang",serif;
     --font-num:"Gowun Batang","Noto Serif KR",serif;
@@ -77,6 +78,14 @@
   .tile.mini{--tw:26px; cursor:default; box-shadow:0 2px 0 var(--jade), 0 3px 4px rgba(0,0,0,.3);}
   .tile.mini .n{font-size:14px;}
   .tile.mini svg{width:11px; height:11px;}
+  /* 타일 뒷면 (섞기·나눠 주기 모션, 나눠 받는 중인 내 패) */
+  .tile.back{background:linear-gradient(150deg, #3aa682 0%, var(--jade) 45%, var(--jade-dark) 100%);
+    box-shadow:inset 0 0 0 calc(var(--tw)*.07) var(--ivory), inset 0 0 0 calc(var(--tw)*.11) #1b5c46, 0 calc(var(--tw)*.08) 0 #e9dcbc, 0 calc(var(--tw)*.12) calc(var(--tw)*.14) rgba(0,0,0,.35); cursor:default;}
+  .tile.back::after{content:""; width:38%; height:38%; border-radius:50%; border:2px solid rgba(251,243,224,.55);}
+  .deal-layer{position:fixed; inset:0; z-index:40; pointer-events:none;}
+  .deal-layer .tile{position:fixed; --tw:40px; margin:-27px 0 0 -20px;}
+  .rack-in.flipin .tile{animation:flipin .45s ease-out both;}
+  @keyframes flipin{from{transform:rotateY(90deg) scale(.9);} to{transform:none;}}
   .drag-ghost{position:fixed; z-index:999; pointer-events:none; transform:translate(-50%,-60%) rotate(-4deg) scale(1.08);}
 
   /* ---------- 입장 화면 ---------- */
@@ -150,8 +159,20 @@
   .opp .nm{max-width:7.5em; overflow:hidden; text-overflow:ellipsis;}
   .opp .cnt, .opp .chips{display:flex; align-items:center; gap:3px; font-family:var(--font-num); font-weight:700;}
   .opp .back{width:12px; height:16px; border-radius:3px; background:linear-gradient(180deg,var(--jade),var(--jade-dark)); box-shadow:inset 0 0 0 1.5px var(--ivory);}
-  .opps.many .opp{padding:0 8px; gap:5px; font-size:14px;}
-  .opps.many .opp .nm{max-width:4.2em;}
+  .opps.many{gap:5px;}
+  .opps.many .opp{padding:0 7px; gap:4px; font-size:14px;}
+  .opps.many .opp .nm{max-width:4.6em; flex-shrink:0;}
+  .opps.many .opp .cnt::after{content:'장'; font-family:var(--font-ui); font-weight:400; font-size:12px;}
+  .opps.many .opp .back{display:none;}
+  /* 팀 색 띠 */
+  .opp.t0{box-shadow:inset 4px 0 0 var(--team0);} .opp.t1{box-shadow:inset 4px 0 0 var(--team1);}
+  .team-dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle;}
+  .team-score{display:inline-flex; align-items:center; gap:6px;}
+  .seat.t0{border-color:var(--team0) !important; box-shadow:inset 0 -5px 0 var(--team0);}
+  .seat.t1{border-color:var(--team1) !important; box-shadow:inset 0 -5px 0 var(--team1);}
+  .seat .tm{font-size:13px; font-weight:700;}
+  .seat.tap{cursor:pointer;}
+  .team-banner{text-align:center; font-family:var(--font-title); font-size:26px; margin:2px 0 6px;}
   .opp.turn{border-color:var(--gold-light); background:rgba(217,169,59,.25);}
   .opp .tag{position:absolute; top:-9px; right:-6px; font-size:12px; padding:1px 6px; border-radius:8px; background:var(--ivory); color:var(--ink);}
   .opp .tag.pass{background:#6b7f78; color:#fff;}
@@ -305,6 +326,7 @@
       <div class="code-line"><span class="lbl">방 코드</span><div class="code-big" id="lobbyCode"></div><span class="lbl">← 친구에게 알려 주세요</span></div>
       <div class="seats" id="lobbySeats"></div>
       <div class="opts" id="lobbyOpts">
+        <div class="ol">방식</div><div class="tgs c2" data-opt="team"></div>
         <div class="ol">판 수</div><div class="tgs c2" data-opt="rounds"></div>
         <div class="ol">인원</div><div class="tgs c3" data-opt="seats"></div>
         <div class="ol">빈자리</div><div class="tgs c2" data-opt="level"></div>
@@ -353,16 +375,19 @@
    ===================================================================== */
 const CONFIG = {
   APP_NAME: '렉시오',
-  APP_VERSION: 'v1.1',          // 고쳐서 다시 올리면 올려 주세요(대기실·결과 화면에 표시)
+  APP_VERSION: 'v1.2',          // 고쳐서 다시 올리면 올려 주세요(대기실·결과 화면에 표시)
   START_CHIPS: 100,             // 한 사람 시작 칩
   TURN_SECONDS: 30,             // 사람 한 턴 시간. 넘으면 자동 패스(선 차례면 가장 낮은 타일 1장 자동)
   ROUND_OPTIONS: [3, 5],        // 판 수 선택지
   SEAT_OPTIONS: [3, 4, 5],      // 온라인 인원 선택지 (모자란 자리는 컴퓨터)
   PRACTICE_SEAT_OPTIONS: [3, 4, 5, 6],   // 혼자 연습 인원 선택지 (6명이면 한 사람 10장)
-  DEFAULTS: { rounds: 3, seats: 4, level: 0 },
+  DEFAULTS: { rounds: 3, seats: 4, level: 0, team: 0 },   // team: 0 개인전, 1 팀전
   CPU_THINK_MS: { MIN: 1800, MAX: 3200 },   // 컴퓨터가 생각하는 시간
   AWAY_THINK_MS: 1500,          // 연결 끊긴 사람 대신 둘 때 기다리는 시간
   ROUND_RESULT_SEC: 9,          // 판 정산표를 보여 주는 시간
+  DEAL_MS: 3000,                // 판 시작 때 섞기(약 1초) + 나눠 주기(약 2초) 모션 시간
+  TEAM_NAMES: ['청팀', '홍팀'],
+  TEAM_COLORS: ['#3a7bd5', '#d0452f'],
   HOST_TIMEOUT_SEC: 30,         // 방장(심판)이 이만큼 끊기면 다른 사람이 심판을 이어받음
   HOST_BEAT_SEC: 4,             // 방장이 "살아 있어요" 신호를 보내는 간격
   ROOM_EXPIRE_HOURS: 24,        // 이보다 오래된 방은 새 방을 만들 때 함께 지움
@@ -533,6 +558,21 @@ function settle(hands){
   return { rows, transfers };
 }
 
+/* 팀전 자리 배치: 청·홍·청·홍 … 번갈아 앉혀서 내는 순서가 상대 팀과 번갈아 돌아가게 함.
+   people: [{id, name, team}] (사람), total: 전체 인원(짝수). 모자란 자리는 그 팀의 컴퓨터로 채움 */
+function arrangeTeams(people, total){
+  const per = total / 2, A = people.filter(p => p.team === 0), B = people.filter(p => p.team === 1);
+  let k = 1;
+  const cpu = t => ({ id: 'cpu' + k, name: CONFIG.CPU_NAMES[(k++) - 1], cpu: true, team: t });
+  while (A.length < per) A.push(cpu(0));
+  while (B.length < per) B.push(cpu(1));
+  const out = [];
+  for (let i = 0; i < per; i++) out.push(A[i], B[i]);
+  let c = 1;                                                // 컴퓨터 이름은 앉은 순서대로 1, 2, 3 …
+  out.forEach(s => { if (s.cpu) { s.id = 'cpu' + c; s.name = CONFIG.CPU_NAMES[c - 1]; c++; } });
+  return out;
+}
+
 function shuffled(n, rnd){
   rnd = rnd || Math.random;
   const a = Array.from({ length: n }, (_, i) => i);
@@ -558,8 +598,9 @@ function makeEngine(io){
   function newGame(seats, settings){
     G = {
       v: CONFIG.APP_VERSION, gameId: Math.random().toString(36).slice(2, 8), round: 0, totalRounds: settings.rounds, level: settings.level,
-      seats: seats.map(s => ({ id: s.id, name: s.name, cpu: !!s.cpu, chips: CONFIG.START_CHIPS, count: 0, away: false })),
+      seats: seats.map(s => ({ id: s.id, name: s.name, cpu: !!s.cpu, chips: CONFIG.START_CHIPS, count: 0, away: false, team: settings.team ? s.team : null })),
       phase: 'play', lastWinner: null, turnId: 0, table: null, passes: [], log: '',
+      team: !!settings.team, teamWins: [0, 0],
     };
     startRound();
   }
@@ -570,20 +611,23 @@ function makeEngine(io){
     G.seats.forEach((s, i) => { H[s.id] = deck.slice(i * per, (i + 1) * per).sort(byStrength); s.count = per; });
     const starter = G.round === 1 ? G.seats.findIndex(s => H[s.id].includes(CLOUD3)) : G.lastWinner;
     G.table = null; G.leader = starter; G.passes = []; G.result = null; G.phase = 'play';
+    G.dealUntil = io.now() + CONFIG.DEAL_MS;                 // 섞기·나눠 주기 모션이 끝난 뒤부터 첫 차례 시간이 흐름
     G.log = G.round === 1 ? `${seatName(starter)}부터 시작해요 (구름 3)` : `${seatName(starter)}부터 시작해요 (지난 판 1등)`;
     setTurn(starter);
     commit();
   }
   function setTurn(i){
     G.turn = i; G.turnId++;
-    G.turnEnds = io.now() + CONFIG.TURN_SECONDS * 1000;
-    G.cpuAt = isAuto(i) ? io.now() + think(i) : 0;
+    const base = Math.max(io.now(), G.dealUntil || 0);
+    G.turnEnds = base + CONFIG.TURN_SECONDS * 1000;
+    G.cpuAt = isAuto(i) ? base + think(i) : 0;
   }
 
   /* 사람(또는 컴퓨터)의 행동 적용. 틀리면 { ok:false, reason } */
   function act(i, kind, tiles){
     if (!G || G.phase !== 'play') return { ok: false, reason: '지금은 낼 수 없어요' };
     if (G.turn !== i) return { ok: false, reason: '내 차례가 아니에요' };
+    if (io.now() < (G.dealUntil || 0)) return { ok: false, reason: '타일을 나눠 주는 중이에요' };
     const owner = G.seats[i].id, hand = H[owner] || [];
     if (kind === 'pass') {
       if (!G.table) return { ok: false, reason: '선 차례에는 패스할 수 없어요' };
@@ -619,6 +663,8 @@ function makeEngine(io){
     else {
       const minOther = Math.min(...G.seats.filter((_, k) => k !== i).map(s => s.count));
       tiles = cpuChoose(hand, G.table, G.seats[i].cpu ? G.level : 1, minOther);
+      // 팀전: 우리 팀이 낸 조합 위에는 굳이 덮지 않음 (이번에 다 털 수 있을 때만 냄)
+      if (G.team && tiles && G.table && G.seats[G.table.by].team === G.seats[i].team && tiles.length !== hand.length) tiles = null;
     }
     const r = tiles ? act(i, 'play', tiles) : act(i, 'pass');
     if (!r.ok) act(i, G.table ? 'pass' : 'play', G.table ? null : [lowestTile(hand)]);   // 안전장치
@@ -636,7 +682,13 @@ function makeEngine(io){
     };
     G.lastWinner = winner;
     G.log = `${seatName(winner)}이(가) 다 냈어요!`;
-    const over = G.round >= G.totalRounds || G.seats.some(x => x.chips <= 0);
+    let over = G.round >= G.totalRounds || G.seats.some(x => x.chips <= 0);
+    if (G.team) {                                            // 팀전: 1등을 낸 팀이 이 판의 1승
+      const t = G.seats[winner].team;
+      G.teamWins[t]++;
+      G.result.winnerTeam = t;
+      if (G.teamWins[t] >= Math.floor(G.totalRounds / 2) + 1) over = true;   // 3판이면 2승, 5판이면 3승 먼저
+    }
     G.phase = over ? 'over' : 'roundEnd';
     G.nextAt = io.now() + CONFIG.ROUND_RESULT_SEC * 1000;
     commit();
@@ -647,6 +699,7 @@ function makeEngine(io){
     if (!G) return;
     const t = io.now();
     if (G.phase === 'play') {
+      if (t < (G.dealUntil || 0)) return;                   // 나눠 주는 중
       const i = G.turn;
       if (isAuto(i)) {
         if (!G.cpuAt) { G.cpuAt = t + think(i); commit(); }
@@ -702,7 +755,7 @@ async function getNet(){
 const arr = x => Array.isArray(x) ? x : x ? Object.values(x) : [];
 function normGame(g){
   if (!g) return null;
-  g.seats = arr(g.seats); g.passes = arr(g.passes);
+  g.seats = arr(g.seats); g.passes = arr(g.passes); g.teamWins = g.team ? arr(g.teamWins).concat([0, 0]).slice(0, 2) : [0, 0];
   if (g.table) g.table.tiles = arr(g.table.tiles);
   if (g.result) { g.result.rows = arr(g.result.rows).map(r => Object.assign(r, { tiles: arr(r.tiles) })); g.result.transfers = arr(g.result.transfers); }
   return g;
@@ -794,20 +847,29 @@ $('practiceBtn').onclick = () => {
   const name = readName(); if (!name) return;
   const set = Object.assign({}, CONFIG.DEFAULTS, store.get('lexio_practice') || {});
   const draw = m => {
-    m.querySelectorAll('.tgs').forEach(row => row.querySelectorAll('.tg').forEach(b => b.classList.toggle('on', String(set[row.dataset.opt]) === b.dataset.v)));
+    if (set.team && set.seats % 2) set.seats = set.seats === 3 ? 4 : 6;   // 팀전은 짝수 인원(2대2, 3대3)만
+    m.querySelectorAll('.tgs').forEach(row => row.querySelectorAll('.tg').forEach(b => {
+      b.classList.toggle('on', String(set[row.dataset.opt]) === b.dataset.v);
+      if (row.dataset.opt === 'seats') b.disabled = !!set.team && Number(b.dataset.v) % 2 === 1;
+    }));
+    const sub = m.querySelector('.sub');
+    if (sub) sub.textContent = set.team
+      ? `${CONFIG.TEAM_NAMES[0]}(나 + 컴퓨터 ${set.seats / 2 - 1}명) 대 ${CONFIG.TEAM_NAMES[1]}(컴퓨터 ${set.seats / 2}명) · 1등을 낸 팀이 그 판의 1승`
+      : `나 + 컴퓨터 ${set.seats - 1}명 · 타일 60개를 똑같이 나눠요`;
   };
   showModal(`<h2>혼자 연습</h2>
     <div class="opts">
+      <div class="ol">방식</div><div class="tgs c2" data-opt="team"><button class="tg" data-v="0">개인전</button><button class="tg" data-v="1">팀전</button></div>
       <div class="ol">판 수</div><div class="tgs c2" data-opt="rounds">${CONFIG.ROUND_OPTIONS.map(r => `<button class="tg" data-v="${r}">${r}판</button>`).join('')}</div>
       <div class="ol">인원</div><div class="tgs c4" data-opt="seats">${CONFIG.PRACTICE_SEAT_OPTIONS.map(r => `<button class="tg" data-v="${r}">${r}명</button>`).join('')}</div>
       <div class="ol">컴퓨터</div><div class="tgs c2" data-opt="level"><button class="tg" data-v="0">쉬움</button><button class="tg" data-v="1">보통</button></div>
     </div>
-    <p class="sub">나 + 컴퓨터 ${set.seats - 1}명 · 타일 60개를 똑같이 나눠요</p>
+    <p class="sub"></p>
     <div class="modal-actions"><button class="btn" id="mNo">취소</button><button class="btn red" id="mGo">시작</button></div>`, m => {
       m.querySelectorAll('.tgs').forEach(row => row.onclick = e => {
         const b = e.target.closest('.tg'); if (!b) return;
+        if (b.disabled) return;
         set[row.dataset.opt] = Number(b.dataset.v); draw(m);
-        m.querySelector('.sub').textContent = `나 + 컴퓨터 ${set.seats - 1}명 · 타일 60개를 똑같이 나눠요`;
       });
       draw(m);
       m.querySelector('#mNo').onclick = closeModal;
@@ -822,8 +884,9 @@ function startPractice(name, set){
     commit: (G, H) => onGame(JSON.parse(JSON.stringify(G)), (H[S.uid] || []).slice()),
     isAway: () => false,
   });
-  const seats = [{ id: 'me', name }];
-  for (let k = 1; k < set.seats; k++) seats.push({ id: 'cpu' + k, name: CONFIG.CPU_NAMES[k - 1], cpu: true });
+  let seats;
+  if (set.team) seats = arrangeTeams([{ id: 'me', name, team: 0 }], set.seats);
+  else { seats = [{ id: 'me', name }]; for (let k = 1; k < set.seats; k++) seats.push({ id: 'cpu' + k, name: CONFIG.CPU_NAMES[k - 1], cpu: true }); }
   showScreen('game');
   S.engine.newGame(seats, set);
   S.timers.push(setInterval(() => S.engine.tick(), 300));
@@ -1043,6 +1106,9 @@ function renderLobby(){
   const set = Object.assign({}, CONFIG.DEFAULTS, m.settings || {});
   $('lobbyCode').innerHTML = S.code.split('').map(d => `<span>${d}</span>`).join('');
   const humans = Object.entries(S.players).filter(([, p]) => p && p.online).sort((a, b) => a[1].joined - b[1].joined);
+  const host = m.host === net.uid;
+  if (set.team) { renderLobbyTeams(m, set, humans, host); return; }
+  $('lobbySeats').style.gridTemplateColumns = '';
   const total = Math.max(set.seats, humans.length);
   let html = '';
   for (let k = 0; k < 5; k++) {
@@ -1053,24 +1119,65 @@ function renderLobby(){
     else html += `<div class="seat"><span class="nm">—</span></div>`;
   }
   $('lobbySeats').innerHTML = html;
-  const host = m.host === net.uid;
-  const row = (opt, items) => {
-    const el = $('lobbyOpts').querySelector(`[data-opt="${opt}"]`);
-    el.innerHTML = items.map(([v, t]) => `<button class="tg ${String(set[opt]) === String(v) ? 'on' : ''}" data-v="${v}" ${host ? '' : 'disabled'}>${t}</button>`).join('');
-  };
-  row('rounds', CONFIG.ROUND_OPTIONS.map(r => [r, `${r}판`]));
-  row('seats', CONFIG.SEAT_OPTIONS.map(r => [r, `${r}명`]));
-  row('level', [[0, '컴퓨터 쉬움'], [1, '컴퓨터 보통']]);
+  lobbyRows(set, host);
   $('startBtn').classList.toggle('hidden', !host);
   $('lobbyMsg').textContent = host
     ? (humans.length < 2 ? '친구들이 들어오길 기다리는 중… 혼자서도 시작할 수 있어요' : `${humans.length}명 + 컴퓨터 ${total - humans.length}명으로 시작해요`)
     : '방장이 시작하길 기다리는 중…';
 }
+function lobbyRows(set, host){
+  const row = (opt, items) => {
+    const el = $('lobbyOpts').querySelector(`[data-opt="${opt}"]`);
+    el.innerHTML = items.map(([v, t, off]) => `<button class="tg ${String(set[opt]) === String(v) ? 'on' : ''}" data-v="${v}" ${host && !off ? '' : 'disabled'}>${t}</button>`).join('');
+  };
+  row('team', [[0, '개인전'], [1, '팀전 (2대2)']]);
+  row('rounds', CONFIG.ROUND_OPTIONS.map(r => [r, `${r}판`]));
+  row('seats', CONFIG.SEAT_OPTIONS.map(r => [r, `${r}명`, set.team && r !== 4]));
+  row('level', [[0, '컴퓨터 쉬움'], [1, '컴퓨터 보통']]);
+}
+/* 팀전 대기실: 입장 순서대로 청·홍 번갈아 자동 배치, 방장이 이름을 탭하면 팀이 바뀜 */
+function lobbyTeamOf(m, humans){
+  const teams = (m && m.teams) || {};
+  const out = {};
+  humans.forEach(([u], k) => { out[u] = teams[u] === 0 || teams[u] === 1 ? teams[u] : k % 2; });
+  return out;
+}
+function renderLobbyTeams(m, set, humans, host){
+  const tOf = lobbyTeamOf(m, humans);
+  const people = humans.map(([u, p]) => ({ id: u, name: p.name, team: tOf[u] }));
+  const cnt = [0, 1].map(t => people.filter(p => p.team === t).length);
+  const ok = humans.length <= 4 && cnt[0] <= 2 && cnt[1] <= 2;
+  const seats = ok ? arrangeTeams(people, 4) : people;
+  let html = '';
+  for (const t of [0, 1]) for (const s of seats.filter(x => x.team === t)) {
+    const isMe = s.id === net.uid, isHost = s.id === m.host;
+    html += `<div class="seat ${s.cpu ? 'cpu' : 'filled'} t${t} ${host && !s.cpu ? 'tap' : ''}" data-uid="${s.cpu ? '' : s.id}">
+      <span class="tm" style="color:${CONFIG.TEAM_COLORS[t]}">${CONFIG.TEAM_NAMES[t]}</span>
+      <span class="nm">${s.cpu ? '🤖 컴퓨터' : (isHost ? '👑' : '') + esc(s.name) + (isMe ? ' (나)' : '')}</span></div>`;
+  }
+  $('lobbySeats').innerHTML = html;
+  $('lobbySeats').style.gridTemplateColumns = 'repeat(4,1fr)';
+  lobbyRows(set, host);
+  $('startBtn').classList.toggle('hidden', !host);
+  $('startBtn').disabled = !ok;
+  $('lobbyMsg').textContent = !ok
+    ? (humans.length > 4 ? '팀전은 4명(2대2)까지예요. 개인전으로 바꾸거나 인원을 줄여 주세요' : '한 팀은 2명까지예요. 이름을 탭해 팀을 바꿔 주세요')
+    : host ? '이름을 탭하면 팀이 바뀌어요 · 빈자리는 컴퓨터가 채워요' : '방장이 팀을 정하고 시작하길 기다리는 중…';
+}
+$('lobbySeats').addEventListener('click', e => {
+  const c = e.target.closest('.seat.tap'); if (!c || !c.dataset.uid || !S.meta || S.meta.host !== net.uid) return;
+  const humans = Object.entries(S.players).filter(([, p]) => p && p.online).sort((a, b) => a[1].joined - b[1].joined);
+  const tOf = lobbyTeamOf(S.meta, humans);
+  const all = {}; humans.forEach(([u]) => all[u] = tOf[u]);
+  all[c.dataset.uid] = 1 - tOf[c.dataset.uid];
+  net.set(`rooms/${S.code}/meta/teams`, all).catch(() => {});
+});
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 $('lobbyOpts').addEventListener('click', e => {
   const b = e.target.closest('.tg'); if (!b || b.disabled || !S.meta || S.meta.host !== net.uid) return;
   const opt = b.parentElement.dataset.opt;
   const set = Object.assign({}, CONFIG.DEFAULTS, S.meta.settings || {}, { [opt]: Number(b.dataset.v) });
+  if (set.team) set.seats = 4;                                 // 온라인 팀전은 2대2
   net.set(`rooms/${S.code}/meta/settings`, set).catch(() => {});
 });
 $('startBtn').onclick = () => hostStartGame();
@@ -1078,9 +1185,17 @@ function hostStartGame(){
   if (!S.isHost || !S.engine) return;
   const set = Object.assign({}, CONFIG.DEFAULTS, S.meta.settings || {});
   const humans = Object.entries(S.players).filter(([, p]) => p && p.online).sort((a, b) => a[1].joined - b[1].joined).slice(0, 5);
-  const total = Math.max(set.seats, humans.length);
-  const seats = humans.map(([u, p]) => ({ id: u, name: p.name }));
-  for (let k = 1; seats.length < total; k++) seats.push({ id: 'cpu' + k, name: CONFIG.CPU_NAMES[k - 1], cpu: true });
+  let seats;
+  if (set.team) {
+    const tOf = lobbyTeamOf(S.meta, humans);
+    const people = humans.map(([u, p]) => ({ id: u, name: p.name, team: tOf[u] }));
+    if (people.length > 4 || people.filter(p => p.team === 0).length > 2 || people.filter(p => p.team === 1).length > 2) return toast('팀 구성을 확인해 주세요 (한 팀 2명까지)', true);
+    seats = arrangeTeams(people, 4);
+  } else {
+    const total = Math.max(set.seats, humans.length);
+    seats = humans.map(([u, p]) => ({ id: u, name: p.name }));
+    for (let k = 1; seats.length < total; k++) seats.push({ id: 'cpu' + k, name: CONFIG.CPU_NAMES[k - 1], cpu: true });
+  }
   net.update({ [`rooms/${S.code}/actions`]: null });
   S.engine.newGame(seats, set);
   net.update({ [`rooms/${S.code}/meta/status`]: 'playing' });
@@ -1118,6 +1233,7 @@ function onGame(g, hand){
   S.hand = h;
   [...S.selected].forEach(id => { if (!h.includes(id)) S.selected.delete(id); });
   if (S.mode === 'online' && S.meta && S.meta.status !== 'lobby') showScreen('game');
+  maybeDeal(g);
   renderGame();
   if (prevTurn !== g.turnId && g.phase === 'play' && g.turn === mySeat() && prevTurn !== undefined) toast(g.table ? '내 차례예요' : '내 차례 · 새로 시작해요', false, 1800);
   const rkey = g.result && `${g.gameId}-${g.result.round}-${g.phase}`;
@@ -1128,6 +1244,67 @@ function onGame(g, hand){
   if (g.phase === 'play' && (S.modalKind === 'round' || S.modalKind === 'over')) closeModal();
 }
 
+/* ---------- 섞기·나눠 주기 모션 ----------
+   판이 새로 시작되면(게임 id + 판 번호가 바뀌면) 한 번 재생. 온라인에서는 심판이 정한 dealUntil에 맞춰 모두 같은 박자로 끝남 */
+let dealSeen = null;
+function maybeDeal(g){
+  const id = g.gameId + '-' + g.round;
+  if (g.phase !== 'play' || !g.dealUntil || dealSeen === id) return;
+  dealSeen = id;
+  const left = g.dealUntil - clockNow();
+  if (left < 700) return;                                    // 늦게 들어왔으면 생략
+  playDeal(g, left);
+}
+function playDeal(g, total){
+  const me = mySeat(), n = g.seats.length, per = 60 / n;
+  S.dealing = true; S.dealShown = 0;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const layer = document.createElement('div'); layer.className = 'deal-layer'; document.body.appendChild(layer);
+  const tr = document.querySelector('.table').getBoundingClientRect();
+  const cx = tr.left + tr.width / 2, cy = tr.top + tr.height / 2;
+  const back = (x, y) => { const d = document.createElement('div'); d.className = 'tile back'; d.style.left = x + 'px'; d.style.top = y + 'px'; layer.appendChild(d); return d; };
+  const finish = () => {
+    layer.remove(); S.dealing = false; S.flipIn = true;
+    if (S.game) renderGame();
+  };
+  if (reduce) { setTimeout(finish, total); return; }
+  // 1) 섞기: 뒷면 더미가 좌우로 엇갈리며 섞임
+  const tShuffle = total * 0.33, tDeal = total * 0.58;
+  const pile = [];
+  for (let k = 0; k < 12; k++) {
+    const d = back(cx + (k % 2 ? 6 : -6), cy - k * 1.5);
+    const dx = (k % 2 ? 1 : -1) * (40 + Math.random() * 30);
+    d.animate([{ transform: 'none' }, { transform: `translateX(${dx}px) rotate(${dx / 6}deg)` }, { transform: 'none' }, { transform: `translateX(${-dx * .7}px) rotate(${-dx / 8}deg)` }, { transform: 'none' }],
+      { duration: tShuffle, easing: 'ease-in-out' });
+    pile.push(d);
+  }
+  // 2) 나눠 주기: 내 다음 자리부터 한 장씩 차례로 날아감
+  const targetOf = i => {
+    if (i === me) { const r = $('rack').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+    const el = document.querySelector(`.opp[data-seat="${i}"]`);
+    if (!el) return [cx, tr.top - 20];
+    const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2];
+  };
+  const flights = per * n, gap = (tDeal - 380) / flights;
+  let k = 0;
+  setTimeout(() => {
+    pile.forEach(d => d.remove());
+    const left = back(cx, cy);                               // 가운데에 남은 더미 한 장(줄어드는 느낌)
+    for (let r = 0; r < per; r++) for (let s = 1; s <= n; s++) {
+      const i = (me + s) % n, at = (k++) * gap;
+      setTimeout(() => {
+        const [x, y] = targetOf(i);
+        const d = back(cx, cy);
+        const a = d.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${x - cx}px, ${y - cy}px) rotate(${(Math.random() - .5) * 40}deg) scale(.85)`, opacity: .9 }],
+          { duration: 380, easing: 'cubic-bezier(.3,.7,.4,1)' });
+        a.onfinish = () => { d.remove(); if (i === me && S.dealing) { S.dealShown++; renderRack(); } };
+      }, at);
+    }
+    setTimeout(() => left.remove(), tDeal - 200);
+  }, tShuffle);
+  setTimeout(finish, total);
+}
+
 function seatLabel(i){
   const g = S.game, s = g.seats[i];
   return i === mySeat() ? '나' : s.name;
@@ -1136,22 +1313,27 @@ function renderGame(){
   const g = S.game; if (!g) return;
   const me = mySeat(), n = g.seats.length;
   const myTurn = g.phase === 'play' && g.turn === me;
-  $('roundTag').textContent = `${g.round}/${g.totalRounds}판`;
+  $('roundTag').innerHTML = g.team
+    ? `${g.round}/${g.totalRounds}판 · <span class="team-score"><i class="team-dot" style="background:var(--team0)"></i>${g.teamWins[0]} : ${g.teamWins[1]}<i class="team-dot" style="background:var(--team1)"></i></span>`
+    : `${g.round}/${g.totalRounds}판`;
   // 상대: 내 다음 자리부터 차례대로
   let opps = '';
   for (let k = 1; k < n; k++) {
     const i = (me + k + n) % n, s = g.seats[i];
     const passed = g.phase === 'play' && g.table && g.passes.includes(i);
     const tag = s.away ? '<span class="tag away">📶✕ 컴퓨터가 대신</span>' : passed ? '<span class="tag pass">패스</span>' : '';
-    const host = S.mode === 'online' && S.meta && s.id === S.meta.host ? '👑' : s.cpu ? '🤖' : '';
     const many = n - 1 >= 4 || (window.innerWidth < 1100 && n - 1 >= 3);
+    const host = S.mode === 'online' && S.meta && s.id === S.meta.host ? '👑' : s.cpu && !many ? '🤖' : '';   // 자리가 좁으면 🤖 생략
     const shown = many && s.cpu ? s.name.replace('컴퓨터', '컴') : s.name;   // 자리가 좁으면 '컴1'처럼 줄여 씀
-    opps += `<div class="opp ${g.phase === 'play' && g.turn === i ? 'turn' : ''}">${tag}<span class="nm">${host}${esc(shown)}</span><span class="cnt"><i class="back"></i>${s.count}</span><span class="chips">💰${s.chips}</span></div>`;
+    opps += `<div class="opp ${g.phase === 'play' && g.turn === i ? 'turn' : ''} ${g.team ? 't' + s.team : ''}" data-seat="${i}">${tag}<span class="nm">${host}${esc(shown)}</span><span class="cnt"><i class="back"></i>${s.count}</span><span class="chips">💰${s.chips}</span></div>`;
   }
   $('opps').innerHTML = opps;
   $('opps').classList.toggle('many', n - 1 >= 4 || window.innerWidth < 1100 && n - 1 >= 3);
   // 가운데 판
-  if (g.table) {
+  if (S.dealing) {
+    $('tHead').innerHTML = `<b>${g.round}판</b> · 패를 섞어 나눠 주는 중…`;
+    $('tTiles').innerHTML = ''; $('tTiles').dataset.key = '';
+  } else if (g.table) {
     $('tHead').innerHTML = `${esc(seatLabel(g.table.by))}${g.table.by === me ? '가' : '이(가)'} 냈어요 · <b>${esc(g.table.ev.name)}</b>`;
     const key = g.table.turnId + ':' + g.table.tiles.join(',');
     if ($('tTiles').dataset.key !== key) { $('tTiles').innerHTML = g.table.tiles.map(id => tileHTML(id)).join(''); $('tTiles').dataset.key = key; }
@@ -1165,10 +1347,11 @@ function renderGame(){
   renderRack();
   renderPreview();
   const mine = g.seats[me];
-  $('meInfo').innerHTML = mine ? `${S.hand.length}장 · 💰${mine.chips}` : '';
+  $('meInfo').innerHTML = mine ? `${g.team ? `<span style="color:${CONFIG.TEAM_COLORS[mine.team]}">● ${CONFIG.TEAM_NAMES[mine.team]}</span> · ` : ''}${S.hand.length}장 · 💰${mine.chips}` : '';
   const ev = evaluate([...S.selected]);
-  $('playBtn').disabled = !(myTurn && ev && beats(ev, g.table && g.table.ev));
-  $('passBtn').disabled = !(myTurn && g.table);
+  const ready = !S.dealing && clockNow() >= (g.dealUntil || 0);
+  $('playBtn').disabled = !(ready && myTurn && ev && beats(ev, g.table && g.table.ev));
+  $('passBtn').disabled = !(ready && myTurn && g.table);
 }
 function renderPreview(){
   const g = S.game; if (!g) return;
@@ -1177,12 +1360,14 @@ function renderPreview(){
   const pv = previewText([...S.selected], g.table, g.phase === 'play' && g.turn === mySeat());
   el.className = 'pv ' + pv.cls; el.textContent = g.phase === 'play' ? pv.text : '판 정산 중…';
 }
+function clockNow(){ return S.mode === 'online' && net ? net.now() : Date.now(); }
 function renderTimer(){
   const g = S.game; if (!g) return;
   const pill = $('turnPill');
   if (g.phase !== 'play') { pill.className = 'turn-pill'; pill.textContent = g.phase === 'over' ? '게임 끝' : '다음 판 준비 중'; return; }
   const me = mySeat(), s = g.seats[g.turn];
-  const now = S.mode === 'online' ? net.now() : Date.now();
+  const now = clockNow();
+  if (now < (g.dealUntil || 0)) { pill.className = 'turn-pill'; pill.textContent = '패를 섞어 나눠 주는 중…'; return; }
   const left = Math.max(0, Math.ceil((g.turnEnds - now) / 1000));
   const auto = s.cpu || s.away;
   pill.className = 'turn-pill' + (g.turn === me ? ' me' : '') + (g.turn === me && left <= 10 ? ' hurry' : '');
@@ -1192,7 +1377,12 @@ setInterval(() => { if (!$('game').classList.contains('hidden')) renderTimer(); 
 
 function renderRack(){
   const rack = $('rack');
-  rack.innerHTML = '<i class="ins-mark" id="insMark"></i><div class="rack-in" id="rackIn">' + S.order.map(id => tileHTML(id, S.selected.has(id) ? 'sel' : '')).join('') + '</div>';
+  if (S.dealing) {   // 나눠 받는 중: 받은 장수만큼 뒷면으로
+    rack.innerHTML = '<i class="ins-mark" id="insMark"></i><div class="rack-in" id="rackIn">' + '<div class="tile back"></div>'.repeat(S.dealShown || 0) + '</div>';
+  } else {
+    rack.innerHTML = '<i class="ins-mark" id="insMark"></i><div class="rack-in' + (S.flipIn ? ' flipin' : '') + '" id="rackIn">' + S.order.map(id => tileHTML(id, S.selected.has(id) ? 'sel' : '')).join('') + '</div>';
+    S.flipIn = false;
+  }
   fitRack();
 }
 // 타일 수에 맞춰 크기 조절: 한 줄에 다 들어가면 한 줄, 아니면 두 줄로 고르게(20장 → 10·10)
@@ -1234,7 +1424,7 @@ $('sortSuitBtn').onclick = () => { S.sortMode = 'suit'; S.order = S.order.slice(
 /* ---------- 타일 고르기(탭) · 순서 옮기기(끌기) ---------- */
 let drag = null;
 $('rack').addEventListener('pointerdown', e => {
-  const t = e.target.closest('.tile[data-id]'); if (!t) return;
+  const t = e.target.closest('.tile[data-id]'); if (!t || S.dealing) return;
   drag = { id: Number(t.dataset.id), x: e.clientX, y: e.clientY, started: false };
 });
 document.addEventListener('pointermove', e => {
@@ -1292,19 +1482,21 @@ function showInsert(){
 }
 
 /* ---------- 결과 팝업 ---------- */
+function teamDot(g, i){ return g.team ? `<i class="team-dot" style="background:${CONFIG.TEAM_COLORS[g.seats[i].team]}"></i>` : ''; }
 function showResult(g){
   const R = g.result, me = mySeat();
   const rows = g.seats.map((s, i) => {
     const r = R.rows[i];
     const d = r.delta > 0 ? `<span class="plus">+${r.delta}</span>` : r.delta < 0 ? `<span class="minus">${r.delta}</span>` : '0';
-    return `<tr class="${i === me ? 'me' : ''}"><td>${i === R.winner ? '🏆 ' : ''}${esc(seatLabel(i))}</td>
+    return `<tr class="${i === me ? 'me' : ''}"><td>${i === R.winner ? '🏆 ' : ''}${teamDot(g, i)}${esc(seatLabel(i))}</td>
       <td><div class="left-tiles">${r.tiles.map(id => tileHTML(id, 'mini')).join('') || '—'}</div></td>
       <td>${r.count}장${r.twos ? ` · 2가 ${r.twos}장 ×${r.mult}` : ''}</td><td>${d}</td><td>${r.chips}</td></tr>`;
   }).join('');
   const table = `<table class="res"><tr><th>이름</th><th>남은 타일</th><th>장수</th><th>칩 변화</th><th>칩</th></tr>${rows}</table>`;
   if (g.phase === 'roundEnd') {
     S.modalKind = 'round';
-    showModal(`<h2>${g.round}판 정산</h2><p class="sub">${esc(seatLabel(R.winner))}${R.winner === me ? '가' : '이(가)'} 먼저 다 냈어요</p>${table}
+    const teamLine = g.team ? `<div class="team-banner" style="color:${CONFIG.TEAM_COLORS[R.winnerTeam]}">${CONFIG.TEAM_NAMES[R.winnerTeam]}이 이 판을 가져갔어요 · ${CONFIG.TEAM_NAMES[0]} ${g.teamWins[0]} : ${g.teamWins[1]} ${CONFIG.TEAM_NAMES[1]}</div>` : '';
+    showModal(`<h2>${g.round}판 정산</h2>${teamLine}<p class="sub">${esc(seatLabel(R.winner))}${R.winner === me ? '가' : '이(가)'} 먼저 다 냈어요</p>${table}
       <p class="count-note">타일이 많은 사람이 적은 사람에게 차이만큼 칩을 줘요 · 남은 2 한 장마다 한 배씩 더<br><span id="nextCount"></span></p>`, null, 'wide');
     const tick = setInterval(() => {
       const el = $('nextCount'); if (!el || S.modalKind !== 'round') return clearInterval(tick);
@@ -1316,25 +1508,35 @@ function showResult(g){
   // 최종
   S.modalKind = 'over';
   const rank = g.seats.map((s, i) => ({ i, chips: s.chips })).sort((a, b) => b.chips - a.chips);
-  const medal = ['🥇', '🥈', '🥉', '4', '5'];
-  const rk = rank.map((r, k) => `<tr class="${r.i === me ? 'me' : ''}"><td class="rank1">${medal[k]}</td><td>${esc(seatLabel(r.i))}</td><td style="font-family:var(--font-num);font-weight:700">💰${r.chips}</td></tr>`).join('');
+  const medal = ['🥇', '🥈', '🥉', '4', '5', '6'];
+  const rk = rank.map((r, k) => `<tr class="${r.i === me ? 'me' : ''}"><td class="rank1">${medal[k]}</td><td>${teamDot(g, r.i)}${esc(seatLabel(r.i))}</td><td style="font-family:var(--font-num);font-weight:700">💰${r.chips}</td></tr>`).join('');
   const canRe = S.mode === 'practice' || S.isHost;
-  showModal(`<h2>최종 순위</h2><table class="res">${rk}</table>
+  let teamTop = '';
+  if (g.team) {
+    const chipsOf = t => g.seats.filter(s => s.team === t).reduce((a, s) => a + s.chips, 0);
+    const c = [chipsOf(0), chipsOf(1)], w = g.teamWins;
+    const win = w[0] !== w[1] ? (w[0] > w[1] ? 0 : 1) : c[0] !== c[1] ? (c[0] > c[1] ? 0 : 1) : -1;   // 판 승수 → 같으면 팀 칩 합
+    const why = w[0] !== w[1] ? `${w[0]} : ${w[1]}` : `${w[0]} : ${w[1]} 동점 · 팀 칩 ${c[0]} : ${c[1]}`;
+    const mine = g.seats[me] ? g.seats[me].team : null;
+    teamTop = `<div class="team-banner" style="color:${win < 0 ? 'var(--wood)' : CONFIG.TEAM_COLORS[win]}">${win < 0 ? '무승부!' : CONFIG.TEAM_NAMES[win] + ' 승리!'}${win >= 0 && mine === win ? ' 🎉' : ''}</div>
+      <p class="sub">${why} · 팀원: ${[0, 1].map(t => CONFIG.TEAM_NAMES[t] + ' ' + g.seats.filter(s => s.team === t).map(s => esc(s.name)).join('·')).join(' / ')}</p>`;
+  }
+  showModal(`<h2>${g.team ? '팀전 결과' : '최종 순위'}</h2>${teamTop}<table class="res">${rk}</table>
     <h3>${g.round}판 정산</h3>${table}
     ${canRe ? '' : '<p class="sub">방장이 다시 시작하면 바로 이어져요</p>'}
     <div class="modal-actions"><button class="btn" id="mHome">처음으로</button>${canRe ? '<button class="btn red" id="mAgain">같은 사람들과 다시</button>' : ''}</div>`, m => {
       m.querySelector('#mHome').onclick = () => S.mode === 'online' ? leaveRoom() : (cleanup(), renderEntry());
       const a = m.querySelector('#mAgain');
       if (a) a.onclick = () => { closeModal(); S.lastResultShown = null; S.order = [];
-        if (S.mode === 'practice') { const set = { rounds: g.totalRounds, seats: g.seats.length, level: g.level }; startPractice(g.seats[me].name, set); }
+        if (S.mode === 'practice') { const set = { rounds: g.totalRounds, seats: g.seats.length, level: g.level, team: g.team ? 1 : 0 }; startPractice(g.seats[me].name, set); }
         else rematch(); };
     }, 'wide');
 }
 function rematch(){
   const G = S.engine.game;
-  const seats = G.seats.map(s => ({ id: s.id, name: s.name, cpu: s.cpu }));   // 같은 자리 그대로 (나간 사람 자리는 계속 컴퓨터가 대신)
+  const seats = G.seats.map(s => ({ id: s.id, name: s.name, cpu: s.cpu, team: s.team }));   // 같은 자리·같은 팀 그대로 (나간 사람 자리는 계속 컴퓨터가 대신)
   net.update({ [`rooms/${S.code}/actions`]: null });
-  S.engine.newGame(seats, { rounds: G.totalRounds, level: G.level });
+  S.engine.newGame(seats, { rounds: G.totalRounds, level: G.level, team: G.team ? 1 : 0 });
 }
 
 /* ---------- 메뉴 · 족보표 ---------- */
@@ -1385,6 +1587,8 @@ function showRules(){
       <tr><td>13·14·15·1·2</td><td>2 스트레이트 (가장 강함)</td></tr>
     </table>
     <p>2 뒤로는 이어지지 않아요(14·15·1·2·3 ✕).</p>
+    <h3>팀전</h3>
+    <p>청팀·홍팀이 번갈아 앉아서 상대 팀과 번갈아 내요. 누가 먼저 다 내면 그 사람의 팀이 그 판의 1승! 3판이면 2승, 5판이면 3승을 먼저 한 팀이 이겨요. 승수가 같으면 팀원 칩을 더해 비교해요. 팀원끼리도 패는 서로 볼 수 없어요.</p>
     <h3>정산</h3>
     <p>누가 다 내면 판 끝. 타일이 많은 사람이 적은 사람에게 장수 차이만큼 칩을 줘요. 손에 남은 2 한 장마다 한 배씩 더(1장 ×2, 2장 ×3). 첫 판은 구름 3을 가진 사람이 시작해요.</p>
     <div class="modal-actions"><button class="btn red" id="mOk">닫기</button></div>`, m => m.querySelector('#mOk').onclick = closeModal, 'wide');
