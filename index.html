@@ -123,7 +123,7 @@
     font-family:var(--font-num); font-weight:700; font-size:42px; color:var(--lacquer);
     background:linear-gradient(180deg,#fffaf0,var(--ivory)); box-shadow:0 5px 0 var(--jade), 0 6px 0 var(--jade-dark), 0 8px 12px rgba(0,0,0,.25); border:1px solid #e3d3ac;}
   .code-big span.empty{color:transparent; background:#e9dcb9; box-shadow:inset 0 2px 4px rgba(0,0,0,.15);}
-  .seats{display:grid; grid-template-columns:repeat(5,1fr); gap:10px;}
+  .seats{display:grid; grid-template-columns:repeat(6,1fr); gap:10px;}
   .seat{height:74px; border-radius:12px; border:2px dashed #cdbb8f; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:17px; color:#9b8a64; text-align:center; padding:0 4px;}
   .seat.filled{border-style:solid; border-color:var(--wood-light); background:#fff; color:var(--ink);}
   .seat.cpu{border-style:solid; border-color:#cdbb8f; background:#f3ead2; color:#6b5a38;}
@@ -281,7 +281,7 @@
   @media (max-width:900px){
     .opp{padding:0 9px; gap:6px; font-size:15px;}
     .opp .nm{max-width:4.5em;}
-    .seats{grid-template-columns:repeat(5,1fr);}
+    .seats{grid-template-columns:repeat(3,1fr);}
   }
   @media (max-width:900px){
     .topbar{flex-wrap:wrap;}
@@ -331,7 +331,7 @@
       <div class="opts" id="lobbyOpts">
         <div class="ol">방식</div><div class="tgs c2" data-opt="team"></div>
         <div class="ol">판 수</div><div class="tgs c2" data-opt="rounds"></div>
-        <div class="ol">인원</div><div class="tgs c3" data-opt="seats"></div>
+        <div class="ol">인원</div><div class="tgs c4" data-opt="seats"></div>
         <div class="ol">빈자리</div><div class="tgs c2" data-opt="level"></div>
       </div>
       <div class="wait-msg" id="lobbyMsg"></div>
@@ -379,12 +379,12 @@
    ===================================================================== */
 const CONFIG = {
   APP_NAME: '렉시오',
-  APP_VERSION: 'v1.3',          // 고쳐서 다시 올리면 올려 주세요(대기실·결과 화면에 표시)
+  APP_VERSION: 'v1.4',          // 고쳐서 다시 올리면 올려 주세요(대기실·결과 화면에 표시)
   START_CHIPS: 100,             // 한 사람 시작 칩
   TURN_SECONDS: 20,             // 사람 한 턴 시간. 넘으면 자동 패스(선 차례면 가장 낮은 타일 1장 자동)
   HURRY_SECONDS: 5,             // 남은 시간이 이만큼 이하면 내 차례 표시가 깜빡임
   ROUND_OPTIONS: [3, 5],        // 판 수 선택지
-  SEAT_OPTIONS: [3, 4, 5],      // 온라인 인원 선택지 (모자란 자리는 컴퓨터)
+  SEAT_OPTIONS: [3, 4, 5, 6],   // 온라인 인원 선택지 (모자란 자리는 컴퓨터, 6명이면 한 사람 10장)
   PRACTICE_SEAT_OPTIONS: [3, 4, 5, 6],   // 혼자 연습 인원 선택지 (6명이면 한 사람 10장)
   DEFAULTS: { rounds: 3, seats: 4, level: 0, team: 0 },   // team: 0 개인전, 1 팀전
   CPU_THINK_MS: { MIN: 1800, MAX: 3200 },   // 컴퓨터가 생각하는 시간
@@ -968,7 +968,7 @@ async function joinRoom(code, name, silent){
     const now = n.now();
     if (meta.status === 'lobby') {
       const others = Object.entries(players).filter(([u, p]) => u !== n.uid && p && p.online);
-      if (!players[n.uid] && others.length >= 5) { if (!silent) toast('방이 꽉 찼어요 (최대 5명)', true); return false; }
+      if (!players[n.uid] && others.length >= 6) { if (!silent) toast('방이 꽉 찼어요 (최대 6명)', true); return false; }
       name = uniqueName(name, others.map(([, p]) => p.name));
       await n.set(`rooms/${code}/players/${n.uid}`, { name, joined: (players[n.uid] && players[n.uid].joined) || now, online: true });
     } else {
@@ -1117,7 +1117,7 @@ function renderLobby(){
   $('lobbySeats').style.gridTemplateColumns = '';
   const total = Math.max(set.seats, humans.length);
   let html = '';
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < 6; k++) {
     if (k < humans.length) {
       const [u, p] = humans[k];
       html += `<div class="seat filled"><span class="who">${u === m.host ? '👑 방장' : u === net.uid ? '나' : '친구'}${u === net.uid && u !== m.host ? '' : ''}</span><span class="nm">${esc(p.name)}</span></div>`;
@@ -1136,11 +1136,13 @@ function lobbyRows(set, host){
     const el = $('lobbyOpts').querySelector(`[data-opt="${opt}"]`);
     el.innerHTML = items.map(([v, t, off]) => `<button class="tg ${String(set[opt]) === String(v) ? 'on' : ''}" data-v="${v}" ${host && !off ? '' : 'disabled'}>${t}</button>`).join('');
   };
-  row('team', [[0, '개인전'], [1, '팀전 (2대2)']]);
+  row('team', [[0, '개인전'], [1, set.team && set.seats === 6 ? '팀전 (3대3)' : set.team ? '팀전 (2대2)' : '팀전']]);
   row('rounds', CONFIG.ROUND_OPTIONS.map(r => [r, `${r}판`]));
-  row('seats', CONFIG.SEAT_OPTIONS.map(r => [r, `${r}명`, set.team && r !== 4]));
+  row('seats', CONFIG.SEAT_OPTIONS.map(r => [r, `${r}명`, set.team && r % 2 === 1]));   // 팀전은 짝수(4명 2대2, 6명 3대3)만
   row('level', [[0, '컴퓨터 쉬움'], [1, '컴퓨터 보통']]);
 }
+// 온라인 팀전 전체 인원: 4(2대2) 또는 6(3대3). 3명이면 4, 5명이면 6으로 올림
+function teamTotal(set){ return Number(set.seats) >= 5 ? 6 : 4; }
 /* 팀전 대기실: 입장 순서대로 청·홍 번갈아 자동 배치, 방장이 이름을 탭하면 팀이 바뀜 */
 function lobbyTeamOf(m, humans){
   const teams = (m && m.teams) || {};
@@ -1152,8 +1154,11 @@ function renderLobbyTeams(m, set, humans, host){
   const tOf = lobbyTeamOf(m, humans);
   const people = humans.map(([u, p]) => ({ id: u, name: p.name, team: tOf[u] }));
   const cnt = [0, 1].map(t => people.filter(p => p.team === t).length);
-  const ok = humans.length <= 4 && cnt[0] <= 2 && cnt[1] <= 2;
-  const seats = ok ? arrangeTeams(people, 4) : people;
+  const total = teamTotal(set), per = total / 2;
+  // 2대2인데 5명 이상 모이면 방장 화면이 알아서 3대3으로 바꿈
+  if (host && total === 4 && humans.length > 4) { net.set(`rooms/${S.code}/meta/settings`, Object.assign({}, set, { seats: 6 })).catch(() => {}); }
+  const ok = humans.length <= total && cnt[0] <= per && cnt[1] <= per;
+  const seats = ok ? arrangeTeams(people, total) : people;
   let html = '';
   for (const t of [0, 1]) for (const s of seats.filter(x => x.team === t)) {
     const isMe = s.id === net.uid, isHost = s.id === m.host;
@@ -1162,13 +1167,13 @@ function renderLobbyTeams(m, set, humans, host){
       <span class="nm">${s.cpu ? '🤖 컴퓨터' : (isHost ? '👑' : '') + esc(s.name) + (isMe ? ' (나)' : '')}</span></div>`;
   }
   $('lobbySeats').innerHTML = html;
-  $('lobbySeats').style.gridTemplateColumns = 'repeat(4,1fr)';
+  $('lobbySeats').style.gridTemplateColumns = total === 6 ? 'repeat(3,1fr)' : 'repeat(4,1fr)';   // 3대3은 팀마다 한 줄
   lobbyRows(set, host);
   $('startBtn').classList.toggle('hidden', !host);
   $('startBtn').disabled = !ok;
   $('lobbyMsg').textContent = !ok
-    ? (humans.length > 4 ? '팀전은 4명(2대2)까지예요. 개인전으로 바꾸거나 인원을 줄여 주세요' : '한 팀은 2명까지예요. 이름을 탭해 팀을 바꿔 주세요')
-    : host ? '이름을 탭하면 팀이 바뀌어요 · 빈자리는 컴퓨터가 채워요' : '방장이 팀을 정하고 시작하길 기다리는 중…';
+    ? (humans.length > total ? `지금 ${humans.length}명이에요. 인원을 6명(3대3)으로 골라 주세요` : `한 팀은 ${per}명까지예요. 이름을 탭해 팀을 바꿔 주세요`)
+    : host ? `${per}대${per} 팀전 · 이름을 탭하면 팀이 바뀌어요 · 빈자리는 컴퓨터가 채워요` : '방장이 팀을 정하고 시작하길 기다리는 중…';
 }
 $('lobbySeats').addEventListener('click', e => {
   const c = e.target.closest('.seat.tap'); if (!c || !c.dataset.uid || !S.meta || S.meta.host !== net.uid) return;
@@ -1183,20 +1188,24 @@ $('lobbyOpts').addEventListener('click', e => {
   const b = e.target.closest('.tg'); if (!b || b.disabled || !S.meta || S.meta.host !== net.uid) return;
   const opt = b.parentElement.dataset.opt;
   const set = Object.assign({}, CONFIG.DEFAULTS, S.meta.settings || {}, { [opt]: Number(b.dataset.v) });
-  if (set.team) set.seats = 4;                                 // 온라인 팀전은 2대2
+  if (set.team) {
+    const n = Object.values(S.players).filter(p => p && p.online).length;
+    set.seats = n > 4 ? 6 : teamTotal(set);
+  }                    // 온라인 팀전은 4명(2대2) 또는 6명(3대3) — 홀수를 고른 채 팀전으로 바꾸면 위로 맞춤
   net.set(`rooms/${S.code}/meta/settings`, set).catch(() => {});
 });
 $('startBtn').onclick = () => hostStartGame();
 function hostStartGame(){
   if (!S.isHost || !S.engine) return;
   const set = Object.assign({}, CONFIG.DEFAULTS, S.meta.settings || {});
-  const humans = Object.entries(S.players).filter(([, p]) => p && p.online).sort((a, b) => a[1].joined - b[1].joined).slice(0, 5);
+  const humans = Object.entries(S.players).filter(([, p]) => p && p.online).sort((a, b) => a[1].joined - b[1].joined).slice(0, 6);
   let seats;
   if (set.team) {
     const tOf = lobbyTeamOf(S.meta, humans);
     const people = humans.map(([u, p]) => ({ id: u, name: p.name, team: tOf[u] }));
-    if (people.length > 4 || people.filter(p => p.team === 0).length > 2 || people.filter(p => p.team === 1).length > 2) return toast('팀 구성을 확인해 주세요 (한 팀 2명까지)', true);
-    seats = arrangeTeams(people, 4);
+    const total = teamTotal(set), per = total / 2;
+    if (people.length > total || people.filter(p => p.team === 0).length > per || people.filter(p => p.team === 1).length > per) return toast(`팀 구성을 확인해 주세요 (한 팀 ${per}명까지)`, true);
+    seats = arrangeTeams(people, total);
   } else {
     const total = Math.max(set.seats, humans.length);
     seats = humans.map(([u, p]) => ({ id: u, name: p.name }));
